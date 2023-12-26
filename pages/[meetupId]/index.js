@@ -1,45 +1,56 @@
+import { MongoClient, ObjectId } from "mongodb";
 import MeetupDetail from "../../components/meetups/MeetupDetail";
 
-function MeetupDetails() {
+function MeetupDetails(props) {
   return (
     <MeetupDetail
-      image="https://images.unsplash.com/photo-1689784626180-3ae58cba794a?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D"
-      address="some street"
-      description="first meet"
+      image={props.meetupData.image}
+      title={props.meetupData.title}
+      address={props.meetupData.address}
+      description={props.meetupData.description}
     />
   );
 }
 
 export async function getStaticPaths() {
+  // Fetch ids
+  const client = await MongoClient.connect(
+    "mongodb+srv://hrishikesh:jKPStPj4vrput0HU@cluster0.ssojtix.mongodb.net/meetups?retryWrites=true&w=majority"
+  );
+  const db = client.db();
+  const meetupsCollection = db.collection("meetups");
+  const meetups = await meetupsCollection.find({}, { _id: 1 }).toArray();
+  client.close();
+
   return {
     fallback: false,
-    paths: [
-      {
-        params: {
-          meetupId: "m1",
-        },
-      },
-      {
-        params: {
-          meetupId: "m2",
-        },
-      },
-    ],
+    paths: meetups.map((meetup) => ({
+      params: { meetupId: meetup._id.toString() },
+    })),
   };
 }
 
 export async function getStaticProps(context) {
   const meetupId = context.params.meetupId;
-  console.log(meetupId);
+
+  const client = await MongoClient.connect(
+    "mongodb+srv://hrishikesh:jKPStPj4vrput0HU@cluster0.ssojtix.mongodb.net/meetups?retryWrites=true&w=majority"
+  );
+  const db = client.db();
+  const meetupsCollection = db.collection("meetups");
+  const selectedMeetups = await meetupsCollection.findOne({
+    _id: new ObjectId(meetupId),
+  });
+  client.close();
 
   return {
     props: {
       meetupData: {
-        image:
-          "https://images.unsplash.com/photo-1689784626180-3ae58cba794a?q=80&w=2070&auto=format&fit=crop&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
-        id: meetupId,
-        address: "some street",
-        description: "first meet",
+        id: selectedMeetups._id.toString(),
+        title: selectedMeetups.title,
+        address: selectedMeetups.address,
+        image: selectedMeetups.image,
+        description: selectedMeetups.description,
       },
     },
   };
